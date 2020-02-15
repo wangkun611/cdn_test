@@ -28,21 +28,13 @@ class FunctionTestCase(TestCase):
     always be called if the set-up ('setUp') function ran successfully.
     """
 
-    def __init__(self, domain, url = None, methodName='runTest', setUp=None, tearDown=None, description=None):
+    def __init__(self, domain, url = None, methodName='runTest', description=None, cell=None, cookies=''):
         super(FunctionTestCase, self).__init__(methodName)
-        self._setUpFunc = setUp
-        self._tearDownFunc = tearDown
         self._description = description
         self._domain = domain
         self._url = url
-
-    def setUp(self):
-        if self._setUpFunc is not None:
-            self._setUpFunc()
-
-    def tearDown(self):
-        if self._tearDownFunc is not None:
-            self._tearDownFunc()
+        self._cell = cell
+        self._cookies = cookies
 
     def get_test_url(self, https=False):
         if not self._url:
@@ -57,44 +49,52 @@ class FunctionTestCase(TestCase):
         headers = {'User-Agent':'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36'}
 
         use_backupcdn = False
-        r1 = requests.get(url, headers=headers, allow_redirects=False)
+        r1 = requests.get(url, headers=headers, allow_redirects=False, cookies=self._cookies)
 
         use_backupcdn = True
-        r2 = requests.get(url, headers=headers, allow_redirects=False)
+        r2 = requests.get(url, headers=headers, allow_redirects=False, cookies=self._cookies)
         self.assertEqual(r1.status_code, r2.status_code)
-        if hash(r1.text) == hash(r2.text):
-            self.assertTrue(True)
+
+        if r1.status_code in (301, 302):
+            self.assertEqual(r1.headers['Location'], r2.headers['Location'])
             return
 
-        self.assertGreater(SequenceMatcher(a=r1.text, b=r2.text).ratio(), 0.8, 'content is not match')
+        if r1.status_code >= 200 and r1.status_code <= 299:
+            if hash(r1.text) != hash(r2.text):
+                self.assertGreater(SequenceMatcher(a=r1.text, b=r2.text).ratio(), 0.8, 'content is not match')
 
     def test_https(self):
         global use_backupcdn
         url = self.get_test_url(True)
         headers = {'User-Agent':'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36'}
 
+        r1 = None
+        r2 = None
         try:
             use_backupcdn = False
-            r1 = requests.get(url, headers=headers, allow_redirects=False)
+            r1 = requests.get(url, headers=headers, allow_redirects=False, cookies=self._cookies)
         except requests.exceptions.SSLError as err:
             self.skipTest('domain not support https')
             return
 
         try:
             use_backupcdn = True
-            r2 = requests.get(url, headers=headers, allow_redirects=False)
+            r2 = requests.get(url, headers=headers, allow_redirects=False, cookies=self._cookies)
         except requests.exceptions.SSLError as err:
             pass
 
-        self.assertEqual(r1.status_code, r2.status_code)
-        if hash(r1.text) == hash(r2.text):
-            self.assertTrue(True)
+        if not r2:
+            self.assertTrue(False, 'backupcdn not support https')
             return
 
-        self.assertGreater(SequenceMatcher(a=r1.text, b=r2.text).ratio(), 0.8, 'content is not match')
+        self.assertEqual(r1.status_code, r2.status_code)
+        if r1.status_code in (301, 302):
+            self.assertEqual(r1.headers['Location'], r2.headers['Location'])
+            return
 
-    def test_ppi(self):
-        pass
+        if r1.status_code >= 200 and r1.status_code <= 299:
+            if hash(r1.text) != hash(r2.text):
+                self.assertGreater(SequenceMatcher(a=r1.text, b=r2.text).ratio(), 0.8, 'content is not match')
 
     def runTest(self):
         pass
@@ -119,9 +119,3 @@ class FunctionTestCase(TestCase):
     def __repr__(self):
         return "<%s tec=%s>" % (strclass(self.__class__),
                                      self._domain)
-
-#    def shortDescription(self):
-#        if self._description is not None:
-#            return self._description
-#        return self._domain
-#        return doc and doc.split("\n")[0].strip() or None
