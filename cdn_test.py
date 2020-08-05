@@ -1,3 +1,6 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
 import unittest
 from cdn_model_test import FunctionTestCase
 import cdn_model_test
@@ -53,10 +56,11 @@ if __name__ == '__main__':
     args = parser.parse_args()
     cdn_model_test.backupcdn_ip = args.ip
     cookies={}
-    for cookie in args.cookies:
-        for kv in cookie.split(';'):
-            name,value=kv.strip().split('=',1)
-            cookies[name] = value
+    if args.cookies:
+        for cookie in args.cookies:
+            for kv in cookie.split(';'):
+                name,value=kv.strip().split('=',1)
+                cookies[name] = value
 
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite(args.domain, cookies))

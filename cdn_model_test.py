@@ -1,3 +1,6 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
 from unittest import TestCase
 from unittest.util import strclass
 from urllib3.util import connection
@@ -83,7 +86,7 @@ class FunctionTestCase(TestCase):
         except requests.exceptions.SSLError as err:
             pass
 
-        if not r2:
+        if r2 == None:
             self.assertTrue(False, 'backupcdn not support https')
             return
 
