@@ -13,13 +13,14 @@ from openpyxl.utils import units
 
 parser = argparse.ArgumentParser(description='Test CDN backup node')
 parser.add_argument("--ip", help="CDN backup node ip", required=True)
+parser.add_argument("--head", help="use http method", required=False, default=False, action='store_true')
 parser.add_argument("--cookies", help="Set http reqest cookies", action='append')
 parser.add_argument("domain", help="Domain XLS file", nargs='*')
 
 wbs = []
 success = PatternFill('solid', fgColor='FF00FF00')
 
-def suiteFile(file, cookies, suite):
+def suiteFile(file, cookies, suite, head):
     '''
     根据Excel文件生成TestCase，默认所有Case都成功，设置成绿色背景
     '''
@@ -35,21 +36,21 @@ def suiteFile(file, cookies, suite):
                 https = row[1].value
             if ncols > 2:
                 url = row[2].value
-            suite.addTest(FunctionTestCase(domain, url=url, methodName='test_http', cell=row[2], cookies=cookies))
+            suite.addTest(FunctionTestCase(domain, url=url, methodName='test_http', cell=row[2], cookies=cookies, head=head))
             row[2].fill = success
             if https:
-                suite.addTest(FunctionTestCase(domain, url=url, methodName='test_https', cell=row[1], cookies=cookies))
+                suite.addTest(FunctionTestCase(domain, url=url, methodName='test_https', cell=row[1], cookies=cookies, head=head))
                 row[1].fill = success
             for ix in range(3, ncols):
                 v = row[ix].value
                 if type(v) == type('') and len(v) > 0:
                     row[ix].fill = success
-                    suite.addTest(FunctionTestCase(domain, url=row[ix].value, methodName='test_http', cell=row[ix], cookies=cookies))
+                    suite.addTest(FunctionTestCase(domain, url=row[ix].value, methodName='test_http', cell=row[ix], cookies=cookies, head=head))
 
-def suite(files, cookies):
+def suite(files, cookies, head):
     suite = unittest.TestSuite()
     for file in files:
-        suiteFile(file, cookies, suite)
+        suiteFile(file, cookies, suite, head)
     return suite
 
 if __name__ == '__main__':
@@ -63,7 +64,7 @@ if __name__ == '__main__':
                 cookies[name] = value
 
     runner = unittest.TextTestRunner(verbosity=2)
-    result = runner.run(suite(args.domain, cookies))
+    result = runner.run(suite(args.domain, cookies, args.head))
 
     skip = NamedStyle(name="skip")
     skip.fill = PatternFill('solid', fgColor='FFFFDC4C')
